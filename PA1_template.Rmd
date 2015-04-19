@@ -5,13 +5,11 @@ output:
     keep_md: true
 ---
 
----
+--------------------------------------------------------------------------------
 
 ## Loading and preprocessing the data
 
-
-
-```{r setoptions, echo=FALSE}
+```{r echo=FALSE,results="hide", message=F, warning=F}
 library(knitr)
 library(ggplot2)
 library(plyr)
@@ -19,42 +17,46 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(stringr)
+```
 
+```{r setoptions, echo=FALSE}
 opts_chunk$set(echo = TRUE)
 ```
 
+
 **Load the Data and remove the missing values in the dataset**
+
+* Reading the data from the csv file and parsing the date using the lubridate package
+    * origActivity has all the rows including the ones that have NA's
+    * activity has all rows that have no NA's
+    * activityNA has only rows that have NA's
 
 ```{r unzipLoad}
 unzip("./activity.zip", exdir = "./")
 origActivity = read.csv("./activity.csv")
+origActivity$date = ymd(origActivity$date, tz=Sys.timezone(location = TRUE))
 activity = subset(origActivity, !is.na(steps))
 activityNA = subset(origActivity, is.na(steps))
-#timeInterval = str_pad(str_pad(activity$interval, 4, side = "left", pad = "0"), 6, side="right", "0")
-#activity$dateTimeInterval = ymd_hms(paste(activity$date, timeInterval , " "))
-activity$date = ymd(activity$date)
-origActivity$date = ymd(origActivity$date)
 ```
 
 **Take a look at the Structure of the Data**
 
 ```{r}
+str(origActivity)
 str(activity)
+str(activityNA)
 ```
 
 
 **Summary of the Data**
 
 ```{r}
+summary(origActivity)
 summary(activity)
+summary(activityNA)
 ```
 
-**First 5 rows of the Data**
-```{r}
-head(activity)
-```
-
----
+--------------------------------------------------------------------------------
 
 ## What is mean total number of steps taken per day?
 
@@ -82,13 +84,18 @@ mean(totalDailySteps$totalSteps)
 median(totalDailySteps$totalSteps)
 ```
 
+--------------------------------------------------------------------------------
+
 ## What is the average daily activity pattern?
 
 **Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)**
 
 ```{r timeseriesplot}
 stepsAvgByInterval = ddply(activity, "interval", summarize, avgSteps=mean(steps))
-plot(stepsAvgByInterval$interval, stepsAvgByInterval$avgSteps, type="l", col="red", ylab="Average Steps", xlab="Interval", main="Average Steps by Interval")
+plot(stepsAvgByInterval$interval, stepsAvgByInterval$avgSteps, type="l", col="red", ylab="Average Steps", xlab="Interval", main="Average Steps by Interval", xlim=c(-50, 3000), ylim=c(-10, 250))
+maxSteps = round(max(stepsAvgByInterval$avgSteps), digits = 2)
+abline(h = maxSteps, col="blue")
+text(800, maxSteps + 10, label=as.character(maxSteps), col="blue")
 ```
 
 **5-minute interval, on average across all the days in the dataset, contains the maximum number of steps**
@@ -97,21 +104,24 @@ plot(stepsAvgByInterval$interval, stepsAvgByInterval$avgSteps, type="l", col="re
 stepsAvgByInterval[stepsAvgByInterval$avgSteps == max(stepsAvgByInterval$avgSteps), ]
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## Imputing missing values
 
-**total number of missing values in the dataset (i.e. the total number of rows with NAs)**
+**Total number of missing values in the dataset (i.e. the total number of rows with NAs)**
 ```{r totalnarows}
 nrow(activityNA)
 ```
 
-**strategy for filling in all of the missing values in the dataset, using the mean for that 5-minute interval**
+**Strategy for filling in all of the missing values in the dataset, using the mean for that 5-minute interval**
 
-using tidyr to spread the intervals into variables, impute the data with mean for that interval and then gather back to its original form into imputedActivity 
+*Using tidyr to spread the intervals into variables, impute the data using impute from Hmisc package and leveraging mean for each of the intervals across all days and then gather back to its original form into imputedActivity*
+
+```{r echo=FALSE, results='hide', message=F, warning=F}
+library(Hmisc)
+```
 
 ```{r fillmissingrows}
-library(Hmisc)
 temp = spread(origActivity, interval, steps)
 names = colnames(temp)
 for (name in names) {
@@ -121,18 +131,21 @@ for (name in names) {
 imputedActivity = gather(temp, interval, steps, -date)
 imputedActivity$interval = as.numeric(as.character(imputedActivity$interval))
 str(imputedActivity)
+
+```
+
+```{r echo=FALSE, results='hide'}
 detach(package:Hmisc, unload=TRUE)
 ```
 
 **Total Steps by day of the imputed dataset**
 
 ```{r imputedTotalsteps}
-library(plyr)
 imputedTotalDailySteps = ddply(imputedActivity, "date", summarize, totalSteps=sum(steps))
 imputedTotalDailySteps
 ```
 
-**histogram of the total number of steps taken each day of the imputed dataset**
+**Histogram of the total number of steps taken each day of the imputed dataset**
 
 ```{r imputedHistogram}
 ggplot(imputedTotalDailySteps, aes(x=totalSteps)) +
@@ -142,7 +155,7 @@ ggplot(imputedTotalDailySteps, aes(x=totalSteps)) +
 
 ```
 
-**mean and median of the total number of steps taken per day of the imputed dataset**
+**Mean and Median of the total number of steps taken per day of the imputed dataset**
 
 ```{r imputedMeanAndMedian}
 mean(imputedTotalDailySteps$totalSteps)
@@ -158,20 +171,22 @@ finalTotalDailySteps = rbind(totalDailySteps, imputedTotalDailySteps)
 ggplot(finalTotalDailySteps, aes(x=totalSteps)) +
         geom_histogram(binwidth=2500, fill="green", colour="black") +
         facet_grid(. ~ imputed) +
-        ggtitle("Histogram comparison of Total Daily Steps between non imputed and imputed dataset") +
+        ggtitle("Histogram comparison of Total Daily Steps \n between non imputed and imputed dataset") +
         xlab("Total Daily Steps") + ylab("Frequency")
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
 **Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day**
+
 ```{r weekdaysweekends}
 imputedActivity$day = ifelse(grepl("Saturday|Sunday", weekdays(imputedActivity$date), ignore.case = FALSE), "weekend", "weekday")
 imputedActivity$day = as.factor(imputedActivity$day)
 table(imputedActivity$day)
 ```
+
 **Panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps**
 
 ```{r averageStepsWeekdaysWeekends}
@@ -184,7 +199,3 @@ ggplot(stepsAvgByIntervalDay, aes(x=interval, y=avgSteps, color=day)) +
     ylab("Average Steps") +
     ggtitle("Comparison of Average Steps between Weekdays and Weekends")
 ```
-
-
-
-

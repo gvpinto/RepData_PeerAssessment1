@@ -1,53 +1,43 @@
 # Reproducible Research: Peer Assessment 1
 
----
+--------------------------------------------------------------------------------
 
 ## Loading and preprocessing the data
 
 
 
 
-```
-## 
-## Attaching package: 'dplyr'
-## 
-## The following objects are masked from 'package:plyr':
-## 
-##     arrange, count, desc, failwith, id, mutate, rename, summarise,
-##     summarize
-## 
-## The following object is masked from 'package:stats':
-## 
-##     filter
-## 
-## The following objects are masked from 'package:base':
-## 
-##     intersect, setdiff, setequal, union
-## 
-## 
-## Attaching package: 'lubridate'
-## 
-## The following object is masked from 'package:plyr':
-## 
-##     here
-```
+
 
 **Load the Data and remove the missing values in the dataset**
+
+* Reading the data from the csv file and parsing the date using the lubridate package
+    * origActivity has all the rows including the ones that have NA's
+    * activity has all rows that have no NA's
+    * activityNA has only rows that have NA's
 
 
 ```r
 unzip("./activity.zip", exdir = "./")
 origActivity = read.csv("./activity.csv")
+origActivity$date = ymd(origActivity$date, tz=Sys.timezone(location = TRUE))
 activity = subset(origActivity, !is.na(steps))
 activityNA = subset(origActivity, is.na(steps))
-#timeInterval = str_pad(str_pad(activity$interval, 4, side = "left", pad = "0"), 6, side="right", "0")
-#activity$dateTimeInterval = ymd_hms(paste(activity$date, timeInterval , " "))
-activity$date = ymd(activity$date)
-origActivity$date = ymd(origActivity$date)
 ```
 
 **Take a look at the Structure of the Data**
 
+
+```r
+str(origActivity)
+```
+
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : POSIXct, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+```
 
 ```r
 str(activity)
@@ -60,9 +50,35 @@ str(activity)
 ##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
 ```
 
+```r
+str(activityNA)
+```
+
+```
+## 'data.frame':	2304 obs. of  3 variables:
+##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : POSIXct, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+```
+
 
 **Summary of the Data**
 
+
+```r
+summary(origActivity)
+```
+
+```
+##      steps             date                        interval     
+##  Min.   :  0.00   Min.   :2012-10-01 00:00:00   Min.   :   0.0  
+##  1st Qu.:  0.00   1st Qu.:2012-10-16 00:00:00   1st Qu.: 588.8  
+##  Median :  0.00   Median :2012-10-31 00:00:00   Median :1177.5  
+##  Mean   : 37.38   Mean   :2012-10-31 00:25:34   Mean   :1177.5  
+##  3rd Qu.: 12.00   3rd Qu.:2012-11-15 00:00:00   3rd Qu.:1766.2  
+##  Max.   :806.00   Max.   :2012-11-30 00:00:00   Max.   :2355.0  
+##  NA's   :2304
+```
 
 ```r
 summary(activity)
@@ -73,28 +89,27 @@ summary(activity)
 ##  Min.   :  0.00   Min.   :2012-10-02 00:00:00   Min.   :   0.0  
 ##  1st Qu.:  0.00   1st Qu.:2012-10-16 00:00:00   1st Qu.: 588.8  
 ##  Median :  0.00   Median :2012-10-29 00:00:00   Median :1177.5  
-##  Mean   : 37.38   Mean   :2012-10-30 17:12:27   Mean   :1177.5  
+##  Mean   : 37.38   Mean   :2012-10-30 17:37:21   Mean   :1177.5  
 ##  3rd Qu.: 12.00   3rd Qu.:2012-11-16 00:00:00   3rd Qu.:1766.2  
 ##  Max.   :806.00   Max.   :2012-11-29 00:00:00   Max.   :2355.0
 ```
 
-**First 5 rows of the Data**
-
 ```r
-head(activity)
+summary(activityNA)
 ```
 
 ```
-##     steps       date interval
-## 289     0 2012-10-02        0
-## 290     0 2012-10-02        5
-## 291     0 2012-10-02       10
-## 292     0 2012-10-02       15
-## 293     0 2012-10-02       20
-## 294     0 2012-10-02       25
+##      steps           date                        interval     
+##  Min.   : NA    Min.   :2012-10-01 00:00:00   Min.   :   0.0  
+##  1st Qu.: NA    1st Qu.:2012-10-26 00:00:00   1st Qu.: 588.8  
+##  Median : NA    Median :2012-11-06 11:30:00   Median :1177.5  
+##  Mean   :NaN    Mean   :2012-11-01 21:30:00   Mean   :1177.5  
+##  3rd Qu.: NA    3rd Qu.:2012-11-11 00:00:00   3rd Qu.:1766.2  
+##  Max.   : NA    Max.   :2012-11-30 00:00:00   Max.   :2355.0  
+##  NA's   :2304
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## What is mean total number of steps taken per day?
 
@@ -194,6 +209,8 @@ median(totalDailySteps$totalSteps)
 ## [1] 10765
 ```
 
+--------------------------------------------------------------------------------
+
 ## What is the average daily activity pattern?
 
 **Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)**
@@ -201,7 +218,10 @@ median(totalDailySteps$totalSteps)
 
 ```r
 stepsAvgByInterval = ddply(activity, "interval", summarize, avgSteps=mean(steps))
-plot(stepsAvgByInterval$interval, stepsAvgByInterval$avgSteps, type="l", col="red", ylab="Average Steps", xlab="Interval", main="Average Steps by Interval")
+plot(stepsAvgByInterval$interval, stepsAvgByInterval$avgSteps, type="l", col="red", ylab="Average Steps", xlab="Interval", main="Average Steps by Interval", xlim=c(-50, 3000), ylim=c(-10, 250))
+maxSteps = round(max(stepsAvgByInterval$avgSteps), digits = 2)
+abline(h = maxSteps, col="blue")
+text(800, maxSteps + 10, label=as.character(maxSteps), col="blue")
 ```
 
 ![](PA1_template_files/figure-html/timeseriesplot-1.png) 
@@ -218,11 +238,11 @@ stepsAvgByInterval[stepsAvgByInterval$avgSteps == max(stepsAvgByInterval$avgStep
 ## 104      835 206.1698
 ```
 
----
+--------------------------------------------------------------------------------
 
 ## Imputing missing values
 
-**total number of missing values in the dataset (i.e. the total number of rows with NAs)**
+**Total number of missing values in the dataset (i.e. the total number of rows with NAs)**
 
 ```r
 nrow(activityNA)
@@ -232,36 +252,12 @@ nrow(activityNA)
 ## [1] 2304
 ```
 
-**strategy for filling in all of the missing values in the dataset, using the mean for that 5-minute interval**
+**Strategy for filling in all of the missing values in the dataset, using the mean for that 5-minute interval**
 
-using tidyr to spread the intervals into variables, impute the data with mean for that interval and then gather back to its original form into imputedActivity 
+*Using tidyr to spread the intervals into variables, impute the data using impute from Hmisc package and leveraging mean for each of the intervals across all days and then gather back to its original form into imputedActivity*
 
 
-```r
-library(Hmisc)
-```
 
-```
-## Loading required package: grid
-## Loading required package: lattice
-## Loading required package: survival
-## Loading required package: splines
-## Loading required package: Formula
-## 
-## Attaching package: 'Hmisc'
-## 
-## The following objects are masked from 'package:dplyr':
-## 
-##     combine, src, summarize
-## 
-## The following objects are masked from 'package:plyr':
-## 
-##     is.discrete, summarize
-## 
-## The following objects are masked from 'package:base':
-## 
-##     format.pval, round.POSIXt, trunc.POSIXt, units
-```
 
 ```r
 temp = spread(origActivity, interval, steps)
@@ -283,15 +279,12 @@ str(imputedActivity)
 ##   .. ..- attr(*, "imputed")= int [1:8] 1 8 32 35 40 41 45 61
 ```
 
-```r
-detach(package:Hmisc, unload=TRUE)
-```
+
 
 **Total Steps by day of the imputed dataset**
 
 
 ```r
-library(plyr)
 imputedTotalDailySteps = ddply(imputedActivity, "date", summarize, totalSteps=sum(steps))
 imputedTotalDailySteps
 ```
@@ -361,7 +354,7 @@ imputedTotalDailySteps
 ## 61 2012-11-30   10766.19
 ```
 
-**histogram of the total number of steps taken each day of the imputed dataset**
+**Histogram of the total number of steps taken each day of the imputed dataset**
 
 
 ```r
@@ -373,7 +366,7 @@ ggplot(imputedTotalDailySteps, aes(x=totalSteps)) +
 
 ![](PA1_template_files/figure-html/imputedHistogram-1.png) 
 
-**mean and median of the total number of steps taken per day of the imputed dataset**
+**Mean and Median of the total number of steps taken per day of the imputed dataset**
 
 
 ```r
@@ -402,17 +395,18 @@ finalTotalDailySteps = rbind(totalDailySteps, imputedTotalDailySteps)
 ggplot(finalTotalDailySteps, aes(x=totalSteps)) +
         geom_histogram(binwidth=2500, fill="green", colour="black") +
         facet_grid(. ~ imputed) +
-        ggtitle("Histogram comparison of Total Daily Steps between non imputed and imputed dataset") +
+        ggtitle("Histogram comparison of Total Daily Steps \n between non imputed and imputed dataset") +
         xlab("Total Daily Steps") + ylab("Frequency")
 ```
 
 ![](PA1_template_files/figure-html/comparison-1.png) 
 
----
+--------------------------------------------------------------------------------
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
 **Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day**
+
 
 ```r
 imputedActivity$day = ifelse(grepl("Saturday|Sunday", weekdays(imputedActivity$date), ignore.case = FALSE), "weekend", "weekday")
@@ -425,6 +419,7 @@ table(imputedActivity$day)
 ## weekday weekend 
 ##   12960    4608
 ```
+
 **Panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps**
 
 
@@ -440,7 +435,3 @@ ggplot(stepsAvgByIntervalDay, aes(x=interval, y=avgSteps, color=day)) +
 ```
 
 ![](PA1_template_files/figure-html/averageStepsWeekdaysWeekends-1.png) 
-
-
-
-
